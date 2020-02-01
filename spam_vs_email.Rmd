@@ -1,0 +1,212 @@
+---
+title: "Code_SpamClassification_GitHub:Classify Spam from Email Using Statistical Models"
+author: "Sonia Jawaid Shaikh"
+date: "January 31, 2020"
+output:
+  html_document: default
+  pdf_document: default
+details: The goal here is to compare various statistical learning techniques (i.e.
+machine learning as applied to statistic) to help us distinguish spam messages from emails. The best technique is the one which produces the highest predictive accuracy
+or lowest misclassification error.
+---
+
+
+##Classify Spam from Email using two Random Forest Models
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+##RANDOM FOREST MODEL 1; MTRY=57
+
+SpamData<-read.table("spam.data")
+
+attach(SpamData)
+train=sample(1:dim(SpamData)[1], 1536)
+
+test= -train
+head(SpamData)
+dim(SpamData$V8)
+set.seed(1)
+begginning=Sys.time()
+
+
+training_data= SpamData[train, ]
+
+testing_data=SpamData[test, ]
+
+testing_y=V58[test]
+training_y=V58[train]
+
+library(randomForest)
+bagging_model = randomForest(V58 ~., 
+                             data = training_data, 
+                             mtry = 57, 
+                             importance = TRUE)
+
+
+library(randomForest)
+
+bagging_model = randomForest(V58~., 
+                             data = training_data, 
+                             mtry = 57, 
+                             importance = TRUE)
+
+
+Spam_probs = predict(bagging_model, testing_data, type = "response")
+
+
+Spam_pred_y=rep("Email", length(testing_y))
+
+
+Spam_probs>=0.5
+
+#Email =0, Spam=1
+
+Spam_pred_y[Spam_probs>=0.5]="Spam"
+
+conf_matrix=table(testing_y, Spam_pred_y)
+conf_matrix
+
+#misclassification
+paste(round((conf_matrix[1,2]+conf_matrix[2,1])/sum(conf_matrix)*100,2),"%")
+
+#correctly idenfied spam
+paste(round(conf_matrix[2,2]/((conf_matrix[2,1])+conf_matrix[2,2])*100,2))
+
+#correctly identified email
+paste(round(conf_matrix[1,1]/((conf_matrix[1,1])+conf_matrix[1,2])*100,2))
+
+##RANOM FOREST MODEL TWO; MTRY=19
+
+
+```
+
+##Classify Spam from Email using Boosting technique
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+library(gbm)
+
+boost.spam=gbm(V58~.,data=training_data, distribution="gaussian",n.trees=5000,interaction.depth=4)
+summary(boost.spam)
+
+plot(boost.spam,i="V5")
+
+Spam_prob_boost=predict(boost.spam,newdata=testing_data,n.trees=5000)
+
+Spam_pred_y_boost=rep("Email", length(testing_y))
+
+
+Spam_prob_boost>=0.5
+
+#Spam=1 Email=0
+
+Spam_pred_y_boost[Spam_prob_boost>=0.5]="Spam"
+
+conf_matrix_boost=table(testing_y, Spam_pred_y_boost)
+conf_matrix_boost
+
+#misclassification
+paste(round((conf_matrix_boost[1,2]+conf_matrix_boost[2,1])/sum(conf_matrix_boost)*100,2),"%")
+
+#correctly idenfied spam
+paste(round(conf_matrix_boost[2,2]/((conf_matrix_boost[2,1])+conf_matrix_boost[2,2])*100,2))
+
+#correctly identified email
+paste(round(conf_matrix_boost[1,1]/((conf_matrix_boost[1,1])+conf_matrix_boost[1,2])*100,2))
+```
+
+
+##Classify Spam from Email using KNN
+``` {r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ISLR)
+library(FNN)
+standardize_Spam=scale(SpamData)
+
+misclassification_error=NULL
+
+for(i in 1:10) 
+{
+  Predicted=knn(training_data,testing_data,training_y,k=i)
+  misclassification_error[i]=mean(testing_y!=Predicted)
+}
+
+misclassification_error
+min(misclassification_error)
+
+which(misclassification_error==min(misclassification_error))
+# which- gives the position of the lowest error.
+
+misclassification_error[which(misclassification_error==min(misclassification_error))]
+
+#Build knn with k=1 model:
+predicted_spam=knn(training_data,testing_data, training_y, k=1)
+
+
+#evaluate model's predictive accuracy
+mean(testing_y==predicted_spam)
+
+conf_matrix_knn=table(testing_y, predicted_spam)
+
+#misclassification
+paste(round((conf_matrix_knn[1,2]+conf_matrix_knn[2,1])/sum(conf_matrix_knn)*100,2),"%")
+
+#correctly idenfied spam
+paste(round(conf_matrix_knn[2,2]/((conf_matrix_knn[2,1])+conf_matrix_knn[2,2])*100,2))
+
+#correctly identified email
+paste(round(conf_matrix_knn[1,1]/((conf_matrix_knn[1,1])+conf_matrix_knn[1,2])*100,2))
+
+```
+
+##Classify spam from email using Linear Discriminant Analysis (LDA)
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(MASS)
+
+lda_model= lda(V58~., data = training_data)
+lda_pred= predict(lda_model,testing_data)
+lda_pred$class
+
+conf_matrix_lda=table(testing_y, lda_pred$class)
+conf_matrix_lda
+
+#misclassification
+paste(round((conf_matrix_lda[1,2]+conf_matrix_lda[2,1])/sum(conf_matrix_lda)*100,2),"%")
+
+#correctly idenfied spam
+paste(round(conf_matrix_lda[2,2]/((conf_matrix_lda[2,1])+conf_matrix_lda[2,2])*100,2))
+
+#correctly identified email
+paste(round(conf_matrix_lda[1,1]/((conf_matrix_lda[1,1])+conf_matrix_lda[1,2])*100,2))
+```
+
+##Classify Spam from Email using Logistic Regression
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+Logistic = glm(V58~., data = training_data, family = 'binomial')
+Log_pred =  predict(Logistic, testing_data)
+
+
+Log_pred_y=rep("Email", length(testing_y))
+
+Log_pred>=0.5
+
+#True=1 False=0
+
+Log_pred_y[Log_pred>=0.5]="Spam"
+
+conf_matrix_log=table(testing_y, Log_pred_y)
+conf_matrix_log
+
+#misclassification
+paste(round((conf_matrix_log[1,2]+conf_matrix_log[2,1])/sum(conf_matrix_log)*100,2),"%")
+
+#correctly idenfied spam
+paste(round(conf_matrix_log[2,2]/((conf_matrix_log[2,1])+conf_matrix_log[2,2])*100,2))
+
+#correctly identified email
+paste(round(conf_matrix_log[1,1]/((conf_matrix_log[1,1])+conf_matrix_log[1,2])*100,2))
+```
+
